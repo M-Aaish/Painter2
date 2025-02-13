@@ -100,70 +100,63 @@ def find_two_recipes(target_rgb, base_colors, max_tries=2000):
 
 def feature_simple_mixing():
     """
-    1) Simple Color Mixing
-    - Manage base colors with a form (add, remove, edit)
-    - Show mixed color
+    Redesigned Simple Color Mixing:
+    - Always start with three base colors if none in session state.
+    - Button to add new color.
+    - Changing a color or ratio updates the preview immediately.
     """
-    st.header("Simple Color Mixing")
-    st.write("Add/remove base colors and set their percentages. See the mixed color below.")
+    st.header("Simple Color Mixing (Redesigned)")
+    st.write("We start with three base colors. You can add or remove colors, adjust their percentages, and see the mixed color in real time.")
 
-    # Session state initialization
-    if "base_colors" not in st.session_state:
-        st.session_state.base_colors = ["#ff0000", "#00ff00", "#0000ff"]
-    if "base_ratios" not in st.session_state:
-        st.session_state.base_ratios = [33.33, 33.33, 33.34]
+    # 1) Session state init
+    if "mix_colors" not in st.session_state:
+        st.session_state.mix_colors = ["#ff0000", "#00ff00", "#0000ff"]
+    if "mix_ratios" not in st.session_state:
+        st.session_state.mix_ratios = [33.33, 33.33, 33.34]
 
-    # Because we don't want partial re-runs, we'll put everything in a form:
-    with st.form("base_colors_form"):
-        st.subheader("Base Colors")
-        # We'll build a list of changes to apply after the form is submitted
-        remove_indices = []
-        for i in range(len(st.session_state.base_colors)):
-            col1, col2, col3 = st.columns([3, 3, 1])
-            with col1:
-                new_color = st.color_picker(
-                    label=f"Color {i+1}",
-                    value=st.session_state.base_colors[i],
-                    key=f"color_picker_{i}"
-                )
-            with col2:
-                new_ratio = st.slider(
-                    "Percentage (%)",
-                    min_value=0.0,
-                    max_value=100.0,
-                    value=st.session_state.base_ratios[i],
-                    step=0.1,
-                    key=f"ratio_slider_{i}"
-                )
-            with col3:
-                remove_button = st.checkbox("Remove", key=f"remove_{i}")
-                if remove_button:
-                    remove_indices.append(i)
+    # 2) Display each color in a loop
+    i = 0
+    while i < len(st.session_state.mix_colors):
+        col1, col2, col3 = st.columns([3, 3, 1])
+        # Color picker
+        new_color = col1.color_picker(
+            label=f"Color {i+1}",
+            value=st.session_state.mix_colors[i],
+            key=f"mix_col_{i}"
+        )
+        # Ratio slider
+        new_ratio = col2.slider(
+            "Percentage (%)",
+            0.0, 100.0,
+            value=st.session_state.mix_ratios[i],
+            step=0.1,
+            key=f"mix_ratio_{i}"
+        )
+        st.session_state.mix_colors[i] = new_color
+        st.session_state.mix_ratios[i] = new_ratio
 
-        # Option to add a new color
-        add_new_color = st.checkbox("Add another base color?", value=False, key="add_color_checkbox")
+        # Remove button
+        if col3.button("Remove", key=f"remove_{i}") and len(st.session_state.mix_colors) > 1:
+            st.session_state.mix_colors.pop(i)
+            st.session_state.mix_ratios.pop(i)
+            st.experimental_rerun()
+        else:
+            i += 1
 
-        submitted = st.form_submit_button("Apply Changes")
-        if submitted:
-            # Remove selected colors (in reverse order so indices don't shift)
-            for idx in reversed(remove_indices):
-                if len(st.session_state.base_colors) > 1:
-                    st.session_state.base_colors.pop(idx)
-                    st.session_state.base_ratios.pop(idx)
+    # 3) Button to add another color
+    if st.button("Add another color"):
+        st.session_state.mix_colors.append("#ffffff")
+        st.session_state.mix_ratios.append(0.0)
+        st.experimental_rerun()
 
-            # If adding a new color, append a default entry
-            if add_new_color:
-                st.session_state.base_colors.append("#ffffff")
-                st.session_state.base_ratios.append(0.0)
-
-            # Update the color & ratio from the form fields
-            # (Note: The color pickers & sliders already updated session state automatically.)
-
-    # Now show the resulting mix
-    mixed_hex = mix_colors(st.session_state.base_colors, st.session_state.base_ratios)
-    st.write("**Mixed Color Preview**")
-    st.markdown(f"<div style='width:150px; height:50px; background-color:{mixed_hex}; border:1px solid #000;'></div>", unsafe_allow_html=True)
-    st.write(f"Mixed Color (HEX): {mixed_hex}")
+    # 4) Compute the mixed color in real time
+    mixed_hex = mix_colors(st.session_state.mix_colors, st.session_state.mix_ratios)
+    st.write("**Mixed Color Preview:**")
+    st.markdown(
+        f"<div style='width:150px; height:50px; background-color:{mixed_hex}; border:1px solid #000;'></div>",
+        unsafe_allow_html=True
+    )
+    st.write(f"Resulting HEX: {mixed_hex}")
 
 def feature_target_recipe():
     """
@@ -173,10 +166,11 @@ def feature_target_recipe():
     """
     st.header("Generate Recipes for a Target Color")
 
-    if "base_colors" not in st.session_state:
-        st.session_state.base_colors = ["#ff0000", "#00ff00", "#0000ff"]
-    if "base_ratios" not in st.session_state:
-        st.session_state.base_ratios = [33.33, 33.33, 33.34]
+    # Ensure base colors exist
+    if "mix_colors" not in st.session_state:
+        st.session_state.mix_colors = ["#ff0000", "#00ff00", "#0000ff"]
+    if "mix_ratios" not in st.session_state:
+        st.session_state.mix_ratios = [33.33, 33.33, 33.34]
 
     color_str = st.text_input("Enter a color (HEX or RGB)", value="#123456", key="target_color_input")
     if st.button("Generate 2 Recipes", key="generate_target_recipe"):
@@ -185,12 +179,12 @@ def feature_target_recipe():
             st.error("Invalid color format. Please enter #aabbcc or 255,100,50, etc.")
         else:
             # Do the random search for 2 solutions
-            solutions = find_two_recipes(target_rgb, st.session_state.base_colors)
+            solutions = find_two_recipes(target_rgb, st.session_state.mix_colors)
             st.subheader(f"Recipes for {color_str}")
             for idx, recipe in enumerate(solutions, start=1):
-                mix_hex = mix_colors(st.session_state.base_colors, recipe)
+                mix_hex = mix_colors(st.session_state.mix_colors, recipe)
                 st.markdown(f"**Recipe {idx}** -> Mixed color: {mix_hex}")
-                for bc, perc in zip(st.session_state.base_colors, recipe):
+                for bc, perc in zip(st.session_state.mix_colors, recipe):
                     st.write(f"• {bc}: {round(perc,2)}%")
                 st.markdown("---")
 
@@ -198,15 +192,15 @@ def feature_image_recipe():
     """
     3) Upload an Image & Pick a Color
     - Upload image
-    - Click to pick color from the canvas
+    - Click to pick color from the canvas (requires background_image).
     - Generate 2 recipes for the picked color
     """
     st.header("Upload an Image & Pick a Color")
 
-    if "base_colors" not in st.session_state:
-        st.session_state.base_colors = ["#ff0000", "#00ff00", "#0000ff"]
-    if "base_ratios" not in st.session_state:
-        st.session_state.base_ratios = [33.33, 33.33, 33.34]
+    if "mix_colors" not in st.session_state:
+        st.session_state.mix_colors = ["#ff0000", "#00ff00", "#0000ff"]
+    if "mix_ratios" not in st.session_state:
+        st.session_state.mix_ratios = [33.33, 33.33, 33.34]
 
     uploaded_file = st.file_uploader("Upload an image (PNG/JPG)", type=["png", "jpg", "jpeg"], key="image_upload")
     if uploaded_file is not None:
@@ -216,8 +210,8 @@ def feature_image_recipe():
             st.error(f"Could not open image: {e}")
             return
 
-        # Display the raw image
-        st.image(image, caption="Uploaded Image", use_column_width=True)
+        # Display the image
+        st.image(image, caption="Uploaded Image", use_container_width=True)
 
         st.write("Click on the image below to pick a color (use the point tool).")
 
@@ -225,6 +219,9 @@ def feature_image_recipe():
         canvas_width = min(image.width, 600)
         canvas_height = min(image.height, 400)
 
+        # If the following call triggers an error about 'image_to_url',
+        # try pinning streamlit and streamlit_drawable-canvas versions,
+        # or remove `background_image=image`.
         canvas_result = st_canvas(
             fill_color="rgba(255,165,0,0.3)",
             stroke_width=3,
@@ -255,12 +252,12 @@ def feature_image_recipe():
                     picked_rgb = image.getpixel((x_orig, y_orig))
                     st.write(f"Picked Color (RGB): {picked_rgb}")
                     if st.button("Generate 2 Recipes for Picked Color"):
-                        solutions = find_two_recipes(picked_rgb, st.session_state.base_colors)
+                        solutions = find_two_recipes(picked_rgb, st.session_state.mix_colors)
                         st.subheader(f"Recipes for {picked_rgb}")
                         for idx, recipe in enumerate(solutions, start=1):
-                            mix_hex = mix_colors(st.session_state.base_colors, recipe)
+                            mix_hex = mix_colors(st.session_state.mix_colors, recipe)
                             st.markdown(f"**Recipe {idx}** -> Mixed color: {mix_hex}")
-                            for bc, perc in zip(st.session_state.base_colors, recipe):
+                            for bc, perc in zip(st.session_state.mix_colors, recipe):
                                 st.write(f"• {bc}: {round(perc,2)}%")
                             st.markdown("---")
                 else:
