@@ -7,16 +7,36 @@ from scipy.optimize import minimize
 # Load the Excel file
 @st.cache_data
 def load_data():
-    file_path = "paints.xlsx"  # Ensure the file is in the app directory
-    xls = pd.ExcelFile(file_path)
-    brands = {}
-    for sheet in xls.sheet_names:
-        df = pd.read_excel(xls, sheet_name=sheet)
-        if 'Name' in df.columns and 'RGB' in df.columns:
-            # Convert RGB column from string to numerical tuple
-            df['RGB'] = df['RGB'].apply(lambda x: tuple(map(int, x.split(','))) if isinstance(x, str) else (0, 0, 0))
-            brands[sheet] = df[['Name', 'RGB']]
-    return brands
+    file_path = "paints.xlsx"  # Ensure file is present in the same directory as your script
+    try:
+        xls = pd.ExcelFile(file_path)
+        brands = {}
+
+        # Debugging: Show available sheets
+        st.write("Available Sheets:", xls.sheet_names)
+
+        for sheet in xls.sheet_names:
+            df = pd.read_excel(xls, sheet_name=sheet)
+
+            # Debugging: Show first few rows of each sheet
+            st.write(f"Checking sheet: {sheet}")
+            st.write(df.head())
+
+            if 'Name' in df.columns and 'RGB' in df.columns:
+                df['RGB'] = df['RGB'].apply(
+                    lambda x: tuple(map(int, x.split(','))) if isinstance(x, str) else (0, 0, 0)
+                )
+                brands[sheet] = df[['Name', 'RGB']]
+
+        # Debugging: Ensure brands are correctly stored
+        st.write("Loaded Brands:", brands.keys())
+
+        return brands
+
+    except Exception as e:
+        st.error(f"Error loading Excel file: {e}")
+        return {}
+
 
 def solve_recipe(colors, target):
     """
