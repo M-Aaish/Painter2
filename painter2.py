@@ -8,7 +8,7 @@ from scipy.optimize import minimize
 # Load the Excel file
 @st.cache_data
 def load_data():
-    file_path = "/mnt/data/paints.xlsx"  # Ensure file is in the app directory
+    file_path = "paints.xlsx"  # Ensure file is in the app directory
     try:
         xls = pd.ExcelFile(file_path)
         brands = {}
