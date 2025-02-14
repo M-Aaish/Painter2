@@ -12,42 +12,26 @@ def load_data():
         xls = pd.ExcelFile(file_path)
         brands = {}
 
-        st.write("Available Sheets:", xls.sheet_names)  # Debugging output
-
         for sheet in xls.sheet_names:
             df = pd.read_excel(xls, sheet_name=sheet, skiprows=1)  # Skip the first row
             df = df.dropna(how='all')  # Remove completely empty rows
 
-            # Debugging: Show the first few rows
-            st.write(f"Checking sheet: {sheet}, Columns: {df.columns.tolist()}")
-            st.write(df.head())  # Display some rows to inspect the format
-
             # Find columns that contain valid paint names and RGB values
-            possible_name_col = df.columns[0]  # First column is likely the name column
-            possible_rgb_col = None
+            possible_name_col = df.columns[1]  # Second column is likely the name column
+            possible_rgb_col = df.columns[2]  # Third column is likely the RGB column
 
-            # Look for an RGB-related column
-            for col in df.columns:
-                if "rgb" in col.lower():
-                    possible_rgb_col = col
-                    break
+            # Convert RGB strings to numerical tuples
+            df['RGB'] = df[possible_rgb_col].astype(str).apply(
+                lambda x: tuple(map(int, x.split(','))) if isinstance(x, str) and ',' in x else None
+            )
+            df = df.dropna(subset=['RGB'])  # Remove invalid rows
 
-            # If no direct RGB column, look for three separate RGB columns
-            if not possible_rgb_col:
-                rgb_cols = [col for col in df.columns if any(c in col.lower() for c in ['r', 'g', 'b'])]
-                if len(rgb_cols) == 3:
-                    df['RGB'] = df[rgb_cols].apply(lambda row: (row[0], row[1], row[2]), axis=1)
-                    possible_rgb_col = 'RGB'
-
-            if possible_name_col and possible_rgb_col:
-                brands[sheet] = df[[possible_name_col, possible_rgb_col]].rename(
-                    columns={possible_name_col: "Name", possible_rgb_col: "RGB"}
+            if possible_name_col and 'RGB' in df.columns:
+                brands[sheet] = df[[possible_name_col, 'RGB']].rename(
+                    columns={possible_name_col: "Name"}
                 )
 
-        st.write("Loaded Brands:", list(brands.keys()))  # Debugging output
-
         return brands
-
     except Exception as e:
         st.error(f"Error loading Excel file: {e}")
         return {}
@@ -82,8 +66,11 @@ def main():
     st.title("Painter Mixing App")
     brands = load_data()
     brand_names = list(brands.keys())
-    selected_brand = st.selectbox("Select Brand", brand_names)
+    if not brand_names:
+        st.error("No paint data loaded. Check the Excel file.")
+        return
     
+    selected_brand = st.selectbox("Select Brand", brand_names)
     target_R = st.number_input("Target R", 0, 255, 128)
     target_G = st.number_input("Target G", 0, 255, 128)
     target_B = st.number_input("Target B", 0, 255, 128)
