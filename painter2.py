@@ -90,8 +90,12 @@ def main():
     
     selected_brand = st.selectbox("Select Paint Brand", brand_names)
 
-    target_color = st.color_picker("Pick Target Color", "#808080")
-    target_rgb = tuple(int(target_color[i:i+2], 16) for i in (1, 3, 5))
+    # User inputs RGB values manually
+    target_R = st.number_input("Enter Red (R)", 0, 255, 128)
+    target_G = st.number_input("Enter Green (G)", 0, 255, 128)
+    target_B = st.number_input("Enter Blue (B)", 0, 255, 128)
+
+    target_rgb = (target_R, target_G, target_B)
 
     # Show target color visually
     st.subheader("🎯 Target Color")
