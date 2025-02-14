@@ -42,12 +42,15 @@ def solve_recipe(colors, target):
         mix = np.dot(x, colors)
         return np.linalg.norm(mix - target)  # Reduce absolute error
 
-    cons = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]
+    cons = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]  # Ensure sum is 1
     bounds = [(0, 1)] * len(colors)
     x0 = np.full(len(colors), 1/len(colors))
 
     res = minimize(objective, x0, bounds=bounds, constraints=cons, method="SLSQP")
-    return res.x, np.linalg.norm(np.dot(res.x, colors) - target)
+    if res.success:
+        return res.x, np.linalg.norm(np.dot(res.x, colors) - target)
+    else:
+        return None, float('inf')
 
 def generate_recipes(paints_df, target, n_recipes=3):
     """
@@ -55,15 +58,16 @@ def generate_recipes(paints_df, target, n_recipes=3):
     """
     recipes = []
     
-    for combo_size in [3, 4]:  # Test both 3 and 4 color combinations
+    for combo_size in [3, 4, 5]:  # Try mixing 3, 4, or 5 colors
         for combo in itertools.combinations(range(len(paints_df)), combo_size):
             colors = np.array([paints_df.iloc[i]['RGB'] for i in combo])
             weights, error = solve_recipe(colors, target)
-            recipes.append({
-                "paints": [paints_df.iloc[i]['Name'] for i in combo],
-                "weights": weights,
-                "error": error
-            })
+            if weights is not None:
+                recipes.append({
+                    "paints": [paints_df.iloc[i]['Name'] for i in combo],
+                    "weights": weights,
+                    "error": error
+                })
 
     return sorted(recipes, key=lambda x: x['error'])[:n_recipes]
 
