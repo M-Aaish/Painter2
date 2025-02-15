@@ -1,141 +1,118 @@
 import streamlit as st
-import pandas as pd
 import numpy as np
-import itertools
 import matplotlib.pyplot as plt
+from itertools import combinations
 from scipy.optimize import minimize
 
-# Load the Excel file
-@st.cache_data
-def load_data():
-    file_path = "paints.xlsx"
-    try:
-        xls = pd.ExcelFile(file_path)
-        brands = {}
+# Base colors with densities
+db_colors = {
+    "Burnt Sienna": {"rgb": [58, 22, 14], "density": 1073},
+    "Burnt Umber": {"rgb": [50, 27, 15], "density": 1348},
+    "Cadmium Orange Hue": {"rgb": [221, 105, 3], "density": 1338},
+    "Cadmium Red Deep Hue": {"rgb": [171, 1, 5], "density": 902},
+    "Cadmium Red Medium": {"rgb": [221, 63, 0], "density": 1547},
+    "Cadmium Red Light": {"rgb": [225, 83, 0], "density": 1573},
+    "Cadmium Red Dark": {"rgb": [166, 0, 9], "density": 1055},
+    "Cadmium Yellow Hue": {"rgb": [255, 193, 0], "density": 1230},
+    "Cadmium Yellow Light": {"rgb": [255, 194, 0], "density": 1403},
+    "Cadmium Yellow Medium": {"rgb": [255, 161, 0], "density": 1534},
+    "Cerulean Blue Hue": {"rgb": [0, 74, 91], "density": 1216},
+    "Cobalt Blue": {"rgb": [0, 39, 71], "density": 1317},
+    "Dioxazine Purple": {"rgb": [215, 17, 115], "density": 1268},
+    "French Ultramarine": {"rgb": [8, 8, 32], "density": 1277},
+    "Ivory Black": {"rgb": [27, 28, 28], "density": 1228},
+    "Lamp Black": {"rgb": [21, 21, 20], "density": 958},
+    "Lemon Yellow": {"rgb": [239, 173, 0], "density": 1024},
+    "Magenta": {"rgb": [98, 4, 32], "density": 1822},
+    "Permanent Alizarin Crimson": {"rgb": [74, 16, 16], "density": 1217},
+    "Permanent Rose": {"rgb": [130, 0, 24], "density": 1227},
+    "Permanent Sap Green": {"rgb": [28, 42, 10], "density": 1041},
+    "Phthalo Blue (Red Shade)": {"rgb": [17, 12, 37], "density": 1080},
+    "Phthalo Green (Yellow Shade)": {"rgb": [0, 32, 24], "density": 1031},
+    "Phthalo Green (Blue Shade)": {"rgb": [3, 26, 33], "density": 1021},
+    "Prussian Blue": {"rgb": [15, 11, 11], "density": 984},
+    "Raw Sienna": {"rgb": [117, 70, 17], "density": 1211},
+    "Raw Umber": {"rgb": [37, 28, 20], "density": 1273},
+    "Titanium White": {"rgb": [249, 245, 234], "density": 1423},
+    "Viridian": {"rgb": [0, 53, 40], "density": 1149},
+    "Yellow Ochre": {"rgb": [187, 128, 18], "density": 1283},
+    "Zinc White (Mixing White)": {"rgb": [250, 242, 222], "density": 1687},
+}
 
-        for sheet in xls.sheet_names:
-            df = pd.read_excel(xls, sheet_name=sheet, skiprows=1).dropna(how='all')
+# Function to mix colors using least squares optimization
+def optimize_color_mix(target_rgb, selected_colors):
+    # Extract the RGB values of the selected colors
+    color_rgbs = np.array([db_colors[name]["rgb"] for name in selected_colors])
 
-            # Identify the name and RGB columns
-            name_col = df.columns[1]  # Assuming second column is paint name
-            rgb_col = df.columns[2]   # Assuming third column contains RGB values
+    # Define an objective function to minimize the color difference
+    def objective(weights):
+        mixed_rgb = np.dot(weights, color_rgbs)
+        return np.linalg.norm(mixed_rgb - target_rgb)  # Minimize RGB difference
 
-            # Convert RGB strings to numerical tuples
-            df['RGB'] = df[rgb_col].astype(str).apply(
-                lambda x: tuple(map(int, x.split(','))) if isinstance(x, str) and ',' in x else None
-            )
-            df = df.dropna(subset=['RGB'])  # Remove invalid rows
+    # Initial guess: equal distribution
+    initial_weights = np.ones(len(selected_colors)) / len(selected_colors)
 
-            if name_col and 'RGB' in df.columns:
-                brands[sheet] = df[[name_col, 'RGB']].rename(columns={name_col: "Name"})
-        
-        return brands
-    except Exception as e:
-        st.error(f"Error loading Excel file: {e}")
-        return {}
+    # Constraints: sum of weights must be 1
+    constraints = {"type": "eq", "fun": lambda w: np.sum(w) - 1}
 
-def solve_recipe(colors, target):
-    """
-    Optimizes the mix ratios to minimize color difference.
-    """
-    def objective(x):
-        mix = np.dot(x, colors)
-        return np.linalg.norm(mix - target)  # Reduce absolute error
+    # Bounds: each weight between 0 and 1
+    bounds = [(0, 1)] * len(selected_colors)
 
-    cons = [{'type': 'eq', 'fun': lambda x: np.sum(x) - 1}]  # Ensure sum is 1
-    bounds = [(0, 1)] * len(colors)
-    x0 = np.full(len(colors), 1/len(colors))
+    # Solve the optimization problem
+    result = minimize(objective, initial_weights, bounds=bounds, constraints=constraints)
 
-    res = minimize(objective, x0, bounds=bounds, constraints=cons, method="SLSQP")
-    if res.success:
-        return res.x, np.linalg.norm(np.dot(res.x, colors) - target)
-    else:
-        return None, float('inf')
+    return result.x if result.success else None
 
-def generate_recipes(paints_df, target, n_recipes=3):
-    """
-    Generates optimized color mixing recipes.
-    """
-    recipes = []
+# Streamlit UI
+st.title("🎨 Paint Recipe Generator")
+st.markdown("Enter an RGB value and get optimized paint mixing recipes.")
+
+# User Input
+r = st.slider("Red", 0, 255, 128)
+g = st.slider("Green", 0, 255, 128)
+b = st.slider("Blue", 0, 255, 128)
+target_color = np.array([r, g, b])
+
+# Display Desired Color
+st.subheader("🎨 Desired Color")
+st.markdown(f"<div style='width:150px; height:75px; background-color:rgb({r},{g},{b});'></div>", unsafe_allow_html=True)
+
+if st.button("Generate Recipe"):
+    # Find best 5 closest colors
+    color_names = list(db_colors.keys())
+    color_rgbs = np.array([db_colors[name]["rgb"] for name in color_names])
     
-    for combo_size in [3, 4, 5]:  # Try mixing 3, 4, or 5 colors
-        for combo in itertools.combinations(range(len(paints_df)), combo_size):
-            colors = np.array([paints_df.iloc[i]['RGB'] for i in combo])
-            weights, error = solve_recipe(colors, target)
-            if weights is not None:
-                recipes.append({
-                    "paints": [paints_df.iloc[i]['Name'] for i in combo],
-                    "weights": weights,
-                    "error": error
-                })
+    # Compute Euclidean distances
+    distances = np.linalg.norm(color_rgbs - target_color, axis=1)
+    closest_indices = np.argsort(distances)[:5]  # Get 5 closest colors
 
-    return sorted(recipes, key=lambda x: x['error'])[:n_recipes]
+    # Generate optimized paint recipes
+    best_recipes = []
+    for combo in combinations([color_names[i] for i in closest_indices], 3):
+        weights = optimize_color_mix(target_color, combo)
+        if weights is not None:
+            mixed_rgb = np.dot(weights, np.array([db_colors[c]["rgb"] for c in combo])).astype(int)
+            error = np.linalg.norm(mixed_rgb - target_color)
+            best_recipes.append({"colors": combo, "weights": weights, "mixed_rgb": mixed_rgb, "error": error})
 
-def display_color_block(color, label):
-    """
-    Displays a colored box with a label.
-    """
-    hex_color = "#{:02x}{:02x}{:02x}".format(*[int(c) for c in color])
-    st.markdown(
-        f"<div style='width:100px; height:50px; background:{hex_color}; border:1px solid black; "
-        f"text-align:center; line-height:50px; margin:5px;'>{label}</div>",
-        unsafe_allow_html=True
-    )
+    # Sort by best match
+    best_recipes = sorted(best_recipes, key=lambda x: x["error"])[:3]
 
-def main():
-    st.title("🎨 Paint Mixer - Find the Best Color Match!")
+    # Display recipes
+    for idx, recipe in enumerate(best_recipes, start=1):
+        st.markdown(f"### Recipe {idx}")
 
-    brands = load_data()
-    brand_names = list(brands.keys())
+        # Display colors with percentages
+        cols = st.columns(3)
+        for i, color_name in enumerate(recipe["colors"]):
+            with cols[i]:
+                st.markdown(f"<div style='width:100px; height:50px; background-color:rgb({db_colors[color_name]['rgb'][0]},{db_colors[color_name]['rgb'][1]},{db_colors[color_name]['rgb'][2]});'></div>", unsafe_allow_html=True)
+                st.write(f"**{color_name}**: {round(recipe['weights'][i] * 100, 1)}%")
 
-    if not brand_names:
-        st.error("No paint data loaded. Check the Excel file.")
-        return
-    
-    selected_brand = st.selectbox("Select Paint Brand", brand_names)
+        # Display mixed color result
+        st.markdown("##### Mixed Color Result")
+        mixed_rgb = recipe["mixed_rgb"]
+        st.markdown(f"<div style='width:150px; height:75px; background-color:rgb({mixed_rgb[0]},{mixed_rgb[1]},{mixed_rgb[2]});'></div>", unsafe_allow_html=True)
 
-    # User inputs RGB values manually
-    target_R = st.number_input("Enter Red (R)", 0, 255, 128)
-    target_G = st.number_input("Enter Green (G)", 0, 255, 128)
-    target_B = st.number_input("Enter Blue (B)", 0, 255, 128)
-
-    target_rgb = (target_R, target_G, target_B)
-
-    # Show target color visually
-    st.subheader("🎯 Target Color")
-    display_color_block(target_rgb, "Target")
-
-    if st.button("Generate Recipes"):
-        target = np.array(target_rgb)
-        paints_df = brands[selected_brand]
-
-        if paints_df.empty:
-            st.error("No paints available for the selected brand.")
-            return
-        
-        recipes = generate_recipes(paints_df, target)
-
-        if not recipes:
-            st.warning("No good match found. Try adjusting the color.")
-        else:
-            for idx, rec in enumerate(recipes, 1):
-                st.subheader(f"🎨 Recipe {idx} (Error: {rec['error']:.2f})")
-
-                # Compute mixed result color
-                mix_rgb = np.dot(rec["weights"], [paints_df[paints_df['Name'] == paint]['RGB'].values[0] for paint in rec["paints"]])
-                mix_rgb = np.clip(mix_rgb, 0, 255).astype(int)
-
-                # Show result color
-                st.markdown("🔹 **Final Mixed Color:**")
-                display_color_block(mix_rgb, "Mixed Result")
-
-                # Show individual paint colors used
-                st.markdown("🔹 **Used Paints:**")
-                for paint, weight in zip(rec["paints"], rec["weights"]):
-                    paint_rgb = paints_df[paints_df['Name'] == paint]['RGB'].values[0]
-                    display_color_block(paint_rgb, f"{paint} ({weight*100:.1f}%)")
-                
-                st.write("---")
-
-if __name__ == "__main__":
-    main()
+        # Show RGB error
+        st.write(f"**Color Match Error:** {round(recipe['error'], 2)}")
