@@ -1,0 +1,144 @@
+Artisan - Winsor & Newton
+1 Burnt Sienna 58,22,14
+2 Burnt Umber 50,27,15
+3 Cadmium Orange Hue 221,63,0
+4 Cadmium Red Deep Hue 171,0,5
+5 Cadmium Red Medium 221,63,0
+6 Cadmium Red Light 229,42,0
+7 Cadmium Red Dark 166,0,9
+8 Cadmium Yellow Hue 255,139,0
+9 Cadmium Yellow Light 255,194,0
+10 Cadmium Yellow Medium 255,161,0
+11 Cerulean Blue 0,97,102
+12 Cerulean Blue Hue 0,74,91
+13 Cobalt Blue 0,39,71
+14 Dioxazine Purple 21,15,17
+15 French Ultramarine 8,8,32
+16 Ivory Black 27,28,28
+17 Lamp Black 21,21,20
+18 Lemon Yellow 239,173,0
+19 Magenta 98,4,32
+20 Permanent Alizarin Crimson 74,1,16
+21 Permanent Rose 130,0,24
+22 Permanent Sap Green 28,42,10
+23 Phthalo Blue (Red Shade) 17,12,37
+24 Phthalo Green (Yellow Shade) 0,32,24
+25 Phthalo Green (Blue Shade) 3,26,33
+26 Prussian Blue 15,11,11
+27 Raw Sienna 117,70,17
+28 Raw Umber 37,26,20
+29 Titanium White 249,245,234
+30 Viridian 0,53,40
+31 Yellow Ochre 187,128,18
+32 Zinc White (Mixing White) 250,242,222
+
+Artists Oil - Winsor & Newton
+1 Alizarin Crimson 68,2,6
+2 Bismuth Yellow 255,232,0
+3 Bright Red 197,0,15
+4 Burnt Sienna 82,42,31
+5 Cadmium Lemon 255,222,0
+6 Cadmium Red 204,12,22
+7 Cadmium Yellow 255,164,0
+8 Cadmium Yellow Deep 255,127,15
+9 Cerulean Blue 100,160,0
+10 Cobalt Blue 0,41,117
+11 Cobalt Blue Deep 221,76,100
+12 Cobalt Chromite Green 46,90,76
+13 Cobalt Green 123,110,0
+14 Cobalt Turquoise 0,99,127
+15 Cobalt Turquoise Light 157,160,0
+16 Cobalt Violet 78,23,80
+17 French Ultramarine 50,61,164
+18 Gold Ochre 168,113,37
+19 Green Gold 71,74,14
+20 Indian Yellow 144,87,0
+21 Indian Yellow Deep 119,85,26
+22 Indanthrene Blue 33,23,57
+23 Ivory Black 16,15,17
+24 Lamp Black 26,27,27
+25 Lemon Yellow Hue 235,215,84
+26 Mars Black 39,38,39
+27 Naples Yellow Deep 222,156,72
+28 Naples Yellow Light 255,227,151
+29 Olive Green 47,43,32
+30 Oxide of Chromium 57,95,58
+31 Permanent Alizarin Crimson 84,2,17
+32 Permanent Magenta 71,16,26
+33 Permanent Mauve 68,50,73
+34 Perylene Black 34,24,24
+35 Prussian Blue 18,28,41
+36 Quinacridone Magenta 108,8,36
+37 Quinacridone Red 144,32,40
+38 Raw Sienna 130,83,39
+39 Raw Umber 64,49,35
+40 Rose Madder Genuine 69,53,53
+41 Sap Green 27,27,0
+42 Scarlet Lake 213,33,22
+43 Terra Rosa 146,75,63
+44 Terre Verte 38,59,47
+45 Titanium White 251,250,241
+46 Transparent Red Ochre 149,66,40
+47 Transparent Yellow 233,162,0
+48 Transparent Maroon 70,21,17
+49 Ultramarine Violet 62,38,126
+50 Vandyke Brown 39,27,19
+51 Venetian Red 127,49,29
+52 Viridian 0,62,53
+53 Winsor Emerald 0,134,84
+54 Winsor Green (Phthalo) 0,50,40
+55 Winsor Green (Yellow shade) 0,60,33
+56 Winsor Lemon 248,65,0
+57 Winsor Orange 129,0,24
+58 Winsor Red Deep 255,204,0
+59 Winsor Yellow 255,145,0
+60 Winsor Yellow Deep 29,23,41
+61 Winsor Violet (Dioxazine) 151,104,47
+62 Zinc White 249,248,235
+
+Gamblin Artist Oil
+1 Ultramarine Blue 44,44,59
+2 Cadmium Lemon 253,221,0
+3 Cadmium Red Medium 198,53,58
+4 Ivory Black 46,46,46
+5 Mars Black 32,30,30
+6 Burnt Umber 53,36,30
+7 Raw Umber 66,58,51
+8 Burnt Sienna 102,62,54
+9 Raw Sienna 149,91,42
+10 Yellow Ochre 180,124,48
+11 Indian Red 110,45,40
+12 Emerald Green 0,136,72
+13 Viridian 24,72,62
+14 Cobalt Green 11,75,60
+15 Phthalo Turquoise 6,26,37
+16 Cobalt Teal 41,83,180
+17 Manganese Blue Hue 26,74,98
+18 Cerulean Blue 0,97,140
+19 Cobalt Blue 0,45,109
+20 Phthalo Blue 17,13,36
+21 Indanthrone Blue 50,46,52
+22 Prussian Blue 13,11,12
+23 Manganese Violet 60,15,56
+24 Dioxazine Purple 38,32,33
+25 Cobalt Violet 70,27,72
+26 Quinacridone Violet 85,20,34
+27 Quinacridone Magenta 97,18,41
+28 Phthalo Emerald 0,36,29
+29 Chromium Oxide Green 76,109,73
+30 Cadmium Yellow Deep 255,165,0
+31 Permanent Green Light 35,150,0
+32 Cadmium Yellow Medium 255,184,0
+33 Cadmium Yellow Light 254,217,0
+34 Hansa Yellow Light 241,203,0
+35 Cadmium Orange 255,126,0
+36 Cadmium Orange Deep 243,91,23
+37 Cadmium Red Light 220,50,40
+38 Napthol Scarlet 191,40,26
+39 Perylene Red 99,0,7
+40 Cadmium Red Deep 165,45,56
+41 Quinacridone Red 138,25,42
+42 Alizarin Crimson 72,28,31
+43 Naphtol Red 191,3,0
+44 Titanium White 248,245,237
+45 Titanium Buff 203,181,139
