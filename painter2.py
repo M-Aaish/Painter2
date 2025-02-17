@@ -4,7 +4,7 @@ import math
 import numpy as np
 
 # ---------------------------------
-# Base colors dictionary (with densities, though we use only RGB here)
+# Base colors dictionary (with densities; we use only the RGB values here)
 # ---------------------------------
 db_colors = {
     "Burnt Sienna": {"rgb": [58, 22, 14], "density": 1073},
@@ -50,7 +50,7 @@ def rgb_to_hex(r, g, b):
 def mix_colors(recipe):
     """
     Given a recipe (list of tuples (color, percentage)),
-    compute the mixed color.
+    compute the weighted average of the RGB values.
     Percentages can be floats; returns an (R, G, B) tuple.
     """
     total, r_total, g_total, b_total = 0, 0, 0, 0
@@ -91,11 +91,9 @@ def generate_recipes(target, step=10.0):
         for p1 in np.arange(0, 100 + step, step):
             for p2 in np.arange(0, 100 - p1 + step, step):
                 p3 = 100 - p1 - p2
-                # Ensure percentages are non-negative
                 if p3 < 0:
                     continue
                 recipe = [(name1, p1), (name2, p2), (name3, p3)]
-                # For mixing, we use the base RGB values
                 mix_recipe = [(rgb1, p1), (rgb2, p2), (rgb3, p3)]
                 mixed = mix_colors(mix_recipe)
                 err = color_error(mixed, target)
@@ -132,7 +130,7 @@ def main():
     st.title("Painter App")
     st.write("Enter your desired paint color to generate paint recipes using base colors.")
     
-    # Let the user choose between the Color Picker or RGB Sliders
+    # Input method: choose between Color Picker or RGB Sliders.
     method = st.radio("Select input method:", ["Color Picker", "RGB Sliders"])
     
     if method == "Color Picker":
@@ -149,31 +147,34 @@ def main():
     st.write("**Desired Color:**", desired_hex)
     display_color_block(desired_rgb, label="Desired")
     
-    # New slider to choose the percentage step (e.g., 1%, 2.5%, etc.)
-    step = st.slider("Select percentage step for recipe generation:", 1.0, 10.0, 10.0, step=0.5)
+    # Slider to select percentage step, now limited to values between 4 and 10.
+    step = st.slider("Select percentage step for recipe generation:", 4.0, 10.0, 10.0, step=0.5)
     
     if st.button("Generate Recipes"):
         recipes = generate_recipes(desired_rgb, step=step)
-        st.write("### Top 3 Paint Recipes")
-        for idx, (recipe, mixed, err) in enumerate(recipes):
-            st.write(f"**Recipe {idx+1}:** (Error = {err:.2f})")
-            cols = st.columns(4)
-            with cols[0]:
-                st.write("Desired:")
-                display_color_block(desired_rgb, label="Desired")
-            with cols[1]:
-                st.write("Result:")
-                display_color_block(mixed, label="Mixed")
-            with cols[2]:
-                st.write("Composition:")
-                for name, perc in recipe:
-                    if perc > 0:
-                        base_rgb = tuple(db_colors[name]["rgb"])
-                        st.write(f"- **{name}**: {perc:.1f}%")
-                        display_color_block(base_rgb, label=name)
-            with cols[3]:
-                st.write("Difference:")
-                st.write(f"RGB Distance: {err:.2f}")
+        if recipes:
+            st.write("### Top 3 Paint Recipes")
+            for idx, (recipe, mixed, err) in enumerate(recipes):
+                st.write(f"**Recipe {idx+1}:** (Error = {err:.2f})")
+                cols = st.columns(4)
+                with cols[0]:
+                    st.write("Desired:")
+                    display_color_block(desired_rgb, label="Desired")
+                with cols[1]:
+                    st.write("Result:")
+                    display_color_block(mixed, label="Mixed")
+                with cols[2]:
+                    st.write("Composition:")
+                    for name, perc in recipe:
+                        if perc > 0:
+                            base_rgb = tuple(db_colors[name]["rgb"])
+                            st.write(f"- **{name}**: {perc:.1f}%")
+                            display_color_block(base_rgb, label=name)
+                with cols[3]:
+                    st.write("Difference:")
+                    st.write(f"RGB Distance: {err:.2f}")
+        else:
+            st.error("No recipes found.")
 
 if __name__ == "__main__":
     main()
