@@ -3,7 +3,7 @@ import itertools
 import math
 import numpy as np
 
-# Set page config as the very first Streamlit command.
+# Set page config at the very beginning.
 st.set_page_config(page_title="Painter App", layout="wide")
 
 # -----------------------------
@@ -19,7 +19,7 @@ def read_color_file(filename="color.txt"):
         return ""
 
 # -----------------------------
-# Parsing function: reads the text and creates a dictionary of databases.
+# Parse the text file into a dictionary of databases.
 # -----------------------------
 def parse_color_db(txt):
     databases = {}
@@ -45,12 +45,12 @@ def parse_color_db(txt):
             databases[current_db].append((color_name, (r, g, b)))
     return databases
 
-# Read and parse the file.
+# Read and parse the color file.
 color_txt = read_color_file("color.txt")
 databases = parse_color_db(color_txt)
 
 # -----------------------------
-# Helper: convert a list of (name, rgb) tuples into a dictionary format.
+# Helper: convert a list of (name, rgb) tuples into a dictionary.
 # -----------------------------
 def convert_db_list_to_dict(color_list):
     d = {}
@@ -128,7 +128,6 @@ def display_color_block(color, label=""):
         unsafe_allow_html=True,
     )
 
-# Helper: display a thin rectangle for color visualization.
 def display_thin_color_block(color):
     hex_color = rgb_to_hex(*color)
     st.markdown(
@@ -137,20 +136,24 @@ def display_thin_color_block(color):
     )
 
 # -----------------------------
-# Colors DataBase Subpage: "Data Bases"
+# Colors DataBase subpage: Data Bases
 # -----------------------------
 def show_databases_page():
     st.title("Color Database - Data Bases")
     selected_db = st.selectbox("Select a color database:", list(databases.keys()))
     st.write(f"### Colors in database: {selected_db}")
     for name, rgb in databases[selected_db]:
-        st.write(f"**{name}**: {rgb_to_hex(*rgb)} ({rgb[0]},{rgb[1]},{rgb[2]})", unsafe_allow_html=True)
+        st.write(f"**{name}**: {rgb_to_hex(*rgb)} ({rgb[0]},{rgb[1]},{rgb[2]})")
         display_thin_color_block(rgb)
 
 # -----------------------------
 # Main app navigation
 # -----------------------------
 def main():
+    # Initialize subpage state if not set.
+    if "subpage" not in st.session_state:
+        st.session_state.subpage = None
+
     st.sidebar.title("Navigation")
     page = st.sidebar.radio("Go to:", ["Recipe Generator", "Colors DataBase"])
     
@@ -178,7 +181,7 @@ def main():
         st.write("**Desired Color:**", desired_hex)
         display_color_block(desired_rgb, label="Desired")
         
-        # Slider to select percentage step (values between 4 and 10).
+        # Slider to select percentage step (4 to 10).
         step = st.slider("Select percentage step for recipe generation:", 4.0, 10.0, 10.0, step=0.5)
         
         if st.button("Generate Recipes"):
@@ -206,20 +209,28 @@ def main():
                         st.write(f"RGB Distance: {err:.2f}")
             else:
                 st.error("No recipes found.")
-    
+        # Clear subpage state when in Recipe Generator.
+        st.session_state.subpage = None
+
     elif page == "Colors DataBase":
         st.title("Colors DataBase")
         st.write("Select an action:")
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("Data Bases"):
-                show_databases_page()
+                st.session_state.subpage = "databases"
         with col2:
             if st.button("Add Colors"):
+                st.session_state.subpage = "add"
                 st.write("Interface to add colors to a database (coming soon).")
         with col3:
             if st.button("Create Custom Data Base"):
+                st.session_state.subpage = "custom"
                 st.write("Interface to create a custom color database (coming soon).")
+        
+        # Persist the subpage content if already selected.
+        if st.session_state.subpage == "databases":
+            show_databases_page()
 
 if __name__ == "__main__":
     main()
