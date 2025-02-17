@@ -2,10 +2,9 @@ import streamlit as st
 import itertools
 import math
 import numpy as np
-from scipy.optimize import minimize
 
 # ---------------------------------
-# Base colors dictionary (we use only the RGB values)
+# Base colors dictionary (with densities, though we use only RGB here)
 # ---------------------------------
 db_colors = {
     "Burnt Sienna": {"rgb": [58, 22, 14], "density": 1073},
@@ -51,8 +50,8 @@ def rgb_to_hex(r, g, b):
 def mix_colors(recipe):
     """
     Given a recipe (list of tuples (color, percentage)),
-    compute the weighted average of the RGB values.
-    Percentages can be floats.
+    compute the mixed color.
+    Percentages can be floats; returns an (R, G, B) tuple.
     """
     total, r_total, g_total, b_total = 0, 0, 0, 0
     for color, perc in recipe:
@@ -66,67 +65,48 @@ def mix_colors(recipe):
     return (round(r_total / total), round(g_total / total), round(b_total / total))
 
 def color_error(c1, c2):
-    """Compute Euclidean distance between two RGB colors."""
+    """Euclidean distance between two RGB colors."""
     return math.sqrt(sum((a - b) ** 2 for a, b in zip(c1, c2)))
 
-def optimize_recipe(target, colors):
+def generate_recipes(target, step=10.0):
     """
-    Given a target color (tuple) and a list of 3 base colors (as RGB tuples),
-    solve for the percentages (p1, p2, p3) minimizing the squared error:
-        ||target - (p1*color1 + p2*color2 + p3*color3)||^2
-    Subject to p1+p2+p3 = 1 and p_i >= 0.
-    Returns a tuple (percentages, error) where percentages are in %.
-    """
-    colors = np.array(colors)  # shape (3,3)
-    target = np.array(target)   # shape (3,)
-
-    def objective(p):
-        mix = p[0]*colors[0] + p[1]*colors[1] + p[2]*colors[2]
-        return np.sum((target - mix) ** 2)
-
-    constraints = [{'type': 'eq', 'fun': lambda p: np.sum(p) - 1}]
-    bounds = [(0, 1)] * 3
-    res = minimize(objective, x0=[1/3, 1/3, 1/3], bounds=bounds, constraints=constraints)
-    if res.success:
-        percentages = res.x * 100.0  # convert to percentages
-        err = math.sqrt(objective(res.x))
-        return percentages, err
-    else:
-        return None, None
-
-def generate_recipes(target):
-    """
-    Generate candidate recipes for all 3-color combinations using optimization.
+    Generate candidate recipes from 3-color combinations.
+    'step' is the percentage increment (e.g., 1.0, 2.5, 10.0).
     Returns a list of tuples (recipe, mixed_color, error).
     Each recipe is a list of tuples (base_color_name, percentage).
     """
     candidates = []
+    # Prepare list of (name, rgb)
     base_list = [(name, info["rgb"]) for name, info in db_colors.items()]
     
-    # Special case: a base color nearly equals target.
+    # Special case: if any base color nearly equals the target.
     for name, rgb in base_list:
         err = color_error(tuple(rgb), target)
-        if err < 5:
+        if err < 5:  # threshold for an exact match
             recipe = [(name, 100.0)]
             candidates.append((recipe, tuple(rgb), err))
     
-    # For each combination of three colors, use optimization.
+    # Generate recipes for every 3-color combination.
     for (name1, rgb1), (name2, rgb2), (name3, rgb3) in itertools.combinations(base_list, 3):
-        percentages, err = optimize_recipe(target, [rgb1, rgb2, rgb3])
-        if percentages is not None:
-            recipe = [(name1, percentages[0]), (name2, percentages[1]), (name3, percentages[2])]
-            # Compute the mixed color from these percentages.
-            mix_recipe = [(rgb1, percentages[0]), (rgb2, percentages[1]), (rgb3, percentages[2])]
-            mixed = mix_colors(mix_recipe)
-            candidates.append((recipe, mixed, err))
-    
-    # Sort candidates by error (lowest first)
+        for p1 in np.arange(0, 100 + step, step):
+            for p2 in np.arange(0, 100 - p1 + step, step):
+                p3 = 100 - p1 - p2
+                # Ensure percentages are non-negative
+                if p3 < 0:
+                    continue
+                recipe = [(name1, p1), (name2, p2), (name3, p3)]
+                # For mixing, we use the base RGB values
+                mix_recipe = [(rgb1, p1), (rgb2, p2), (rgb3, p3)]
+                mixed = mix_colors(mix_recipe)
+                err = color_error(mixed, target)
+                candidates.append((recipe, mixed, err))
+    # Sort candidates by error (lowest error first)
     candidates.sort(key=lambda x: x[2])
-    # Select top 3 unique recipes.
+    # Choose top 3 unique recipes.
     top = []
     seen = set()
     for rec, mixed, err in candidates:
-        key = tuple(sorted((name, round(perc,1)) for name, perc in rec if perc > 0))
+        key = tuple(sorted((name, perc) for name, perc in rec if perc > 0))
         if key not in seen:
             seen.add(key)
             top.append((rec, mixed, err))
@@ -135,7 +115,10 @@ def generate_recipes(target):
     return top
 
 def display_color_block(color, label=""):
-    """Display a colored block using HTML."""
+    """
+    Display a colored block using an HTML div.
+    'color' is an (R, G, B) tuple.
+    """
     hex_color = rgb_to_hex(*color)
     st.markdown(
         f"<div style='background-color: {hex_color}; width:100px; height:100px; border:1px solid #000; text-align: center; line-height: 100px;'>{label}</div>",
@@ -148,9 +131,10 @@ def display_color_block(color, label=""):
 def main():
     st.title("Painter App")
     st.write("Enter your desired paint color to generate paint recipes using base colors.")
-
-    # Let the user choose input method.
+    
+    # Let the user choose between the Color Picker or RGB Sliders
     method = st.radio("Select input method:", ["Color Picker", "RGB Sliders"])
+    
     if method == "Color Picker":
         desired_hex = st.color_picker("Pick a color", "#ffffff")
         desired_rgb = tuple(int(desired_hex[i:i+2], 16) for i in (1, 3, 5))
@@ -164,32 +148,32 @@ def main():
     
     st.write("**Desired Color:**", desired_hex)
     display_color_block(desired_rgb, label="Desired")
-
+    
+    # New slider to choose the percentage step (e.g., 1%, 2.5%, etc.)
+    step = st.slider("Select percentage step for recipe generation:", 1.0, 10.0, 10.0, step=0.5)
+    
     if st.button("Generate Recipes"):
-        recipes = generate_recipes(desired_rgb)
-        if recipes:
-            st.write("### Top 3 Paint Recipes")
-            for idx, (recipe, mixed, err) in enumerate(recipes):
-                st.write(f"**Recipe {idx+1}:** (Error = {err:.2f})")
-                cols = st.columns(4)
-                with cols[0]:
-                    st.write("Desired:")
-                    display_color_block(desired_rgb, label="Desired")
-                with cols[1]:
-                    st.write("Result:")
-                    display_color_block(mixed, label="Mixed")
-                with cols[2]:
-                    st.write("Composition:")
-                    for name, perc in recipe:
-                        if perc > 0:
-                            base_rgb = tuple(db_colors[name]["rgb"])
-                            st.write(f"- **{name}**: {perc:.1f}%")
-                            display_color_block(base_rgb, label=name)
-                with cols[3]:
-                    st.write("Difference:")
-                    st.write(f"RGB Distance: {err:.2f}")
-        else:
-            st.error("No recipes found.")
+        recipes = generate_recipes(desired_rgb, step=step)
+        st.write("### Top 3 Paint Recipes")
+        for idx, (recipe, mixed, err) in enumerate(recipes):
+            st.write(f"**Recipe {idx+1}:** (Error = {err:.2f})")
+            cols = st.columns(4)
+            with cols[0]:
+                st.write("Desired:")
+                display_color_block(desired_rgb, label="Desired")
+            with cols[1]:
+                st.write("Result:")
+                display_color_block(mixed, label="Mixed")
+            with cols[2]:
+                st.write("Composition:")
+                for name, perc in recipe:
+                    if perc > 0:
+                        base_rgb = tuple(db_colors[name]["rgb"])
+                        st.write(f"- **{name}**: {perc:.1f}%")
+                        display_color_block(base_rgb, label=name)
+            with cols[3]:
+                st.write("Difference:")
+                st.write(f"RGB Distance: {err:.2f}")
 
 if __name__ == "__main__":
     main()
