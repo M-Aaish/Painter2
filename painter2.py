@@ -4,7 +4,7 @@ import math
 import numpy as np
 
 # -----------------------------
-# Read the color database from a text file
+# Read the color database from a text file.
 # -----------------------------
 @st.cache_data
 def read_color_file(filename="color.txt"):
@@ -16,7 +16,7 @@ def read_color_file(filename="color.txt"):
         return ""
 
 # -----------------------------
-# Parsing function: reads the text and creates a dictionary of databases.
+# Parse the text file into a dictionary of databases.
 # -----------------------------
 def parse_color_db(txt):
     databases = {}
@@ -25,13 +25,13 @@ def parse_color_db(txt):
         line = line.strip()
         if not line:
             continue
-        # If the line doesn't start with a digit, treat it as a header (database name)
+        # If line doesn't start with a digit, treat as header (database name)
         if not line[0].isdigit():
             current_db = line
             databases[current_db] = []
         else:
             tokens = line.split()
-            # First token is an index, last token is the RGB value, rest is the color name.
+            # First token is an index, last token is the RGB string, rest form the color name.
             index = tokens[0]
             rgb_str = tokens[-1]
             color_name = " ".join(tokens[1:-1])
@@ -42,12 +42,12 @@ def parse_color_db(txt):
             databases[current_db].append((color_name, (r, g, b)))
     return databases
 
-# Read and parse the database file.
+# Read and parse the file.
 color_txt = read_color_file("color.txt")
 databases = parse_color_db(color_txt)
 
 # -----------------------------
-# Helper to convert list to dictionary format required by recipe generation.
+# Helper: convert a list of (name, rgb) tuples into a dictionary format.
 # -----------------------------
 def convert_db_list_to_dict(color_list):
     d = {}
@@ -56,10 +56,10 @@ def convert_db_list_to_dict(color_list):
     return d
 
 # -----------------------------
-# Existing helper functions
+# Existing helper functions.
 # -----------------------------
 def rgb_to_hex(r, g, b):
-    """Convert RGB (0-255) to a hex string."""
+    """Convert RGB (0-255) to hex string."""
     return f'#{r:02x}{g:02x}{b:02x}'
 
 def mix_colors(recipe):
@@ -80,7 +80,7 @@ def color_error(c1, c2):
 def generate_recipes(target, base_colors_dict, step=10.0):
     """
     Generate candidate recipes from 3-color combinations using only base colors
-    from the selected database (provided as base_colors_dict).
+    from the selected database (base_colors_dict).
     'step' is the percentage increment.
     Returns a list of tuples (recipe, mixed_color, error).
     Each recipe is a list of tuples (base_color_name, percentage).
@@ -125,22 +125,45 @@ def display_color_block(color, label=""):
         unsafe_allow_html=True,
     )
 
+# New helper to display a thin color rectangle.
+def display_thin_color_block(color):
+    hex_color = rgb_to_hex(*color)
+    st.markdown(
+        f"<div style='background-color: {hex_color}; width:50px; height:20px; border:1px solid #000; display:inline-block; margin-right:10px;'></div>",
+        unsafe_allow_html=True,
+    )
+
+# -----------------------------
+# Page for "Data Bases" under Colors DataBase.
+# -----------------------------
+def show_databases_page():
+    st.title("Color Database - Data Bases")
+    selected_db = st.selectbox("Select a color database:", list(databases.keys()))
+    st.write(f"### Colors in database: {selected_db}")
+    for name, rgb in databases[selected_db]:
+        st.write(f"**{name}**: {rgb_to_hex(*rgb)} ({rgb[0]},{rgb[1]},{rgb[2]})", unsafe_allow_html=True)
+        display_thin_color_block(rgb)
+
 # -----------------------------
 # Main app navigation
 # -----------------------------
 def main():
     st.set_page_config(page_title="Painter App", layout="wide")
-    # Sidebar navigation: two radio buttons for page selection.
     st.sidebar.title("Navigation")
-    page = st.sidebar.radio("Go to:", ["Recipe Generator", "Colors DataBase"])
+    # Sidebar radio for main page navigation.
+    main_page = st.sidebar.radio("Go to:", ["Recipe Generator", "Colors DataBase"])
     
-    if page == "Recipe Generator":
+    # We'll use a session state variable for subpage navigation on Colors DataBase.
+    if "subpage" not in st.session_state:
+        st.session_state.subpage = None
+
+    if main_page == "Recipe Generator":
         st.title("Painter App - Recipe Generator")
         st.write("Enter your desired paint color to generate paint recipes using base colors.")
         
         # Dropdown to select a database from the parsed file.
         db_choice = st.selectbox("Select a color database:", list(databases.keys()))
-        selected_db = convert_db_list_to_dict(databases[db_choice])
+        selected_db_dict = convert_db_list_to_dict(databases[db_choice])
         
         # Input method for desired color.
         method = st.radio("Select input method:", ["Color Picker", "RGB Sliders"])
@@ -158,11 +181,11 @@ def main():
         st.write("**Desired Color:**", desired_hex)
         display_color_block(desired_rgb, label="Desired")
         
-        # Slider to choose percentage step; limited between 4 and 10.
+        # Slider for percentage step (limited between 4 and 10).
         step = st.slider("Select percentage step for recipe generation:", 4.0, 10.0, 10.0, step=0.5)
         
         if st.button("Generate Recipes"):
-            recipes = generate_recipes(desired_rgb, selected_db, step=step)
+            recipes = generate_recipes(desired_rgb, selected_db_dict, step=step)
             if recipes:
                 st.write("### Top 3 Paint Recipes")
                 for idx, (recipe, mixed, err) in enumerate(recipes):
@@ -178,7 +201,7 @@ def main():
                         st.write("Composition:")
                         for name, perc in recipe:
                             if perc > 0:
-                                base_rgb = tuple(selected_db[name]["rgb"])
+                                base_rgb = tuple(selected_db_dict[name]["rgb"])
                                 st.write(f"- **{name}**: {perc:.1f}%")
                                 display_color_block(base_rgb, label=name)
                     with cols[3]:
@@ -186,20 +209,26 @@ def main():
                         st.write(f"RGB Distance: {err:.2f}")
             else:
                 st.error("No recipes found.")
-    
-    elif page == "Colors DataBase":
+        # Reset subpage in case we were on a subpage from Colors DataBase.
+        st.session_state.subpage = None
+
+    elif main_page == "Colors DataBase":
         st.title("Colors DataBase")
         st.write("Select an action:")
         col1, col2, col3 = st.columns(3)
         with col1:
             if st.button("Data Bases"):
-                st.write("Display existing databases here.")
+                st.session_state.subpage = "databases"
         with col2:
             if st.button("Add Colors"):
-                st.write("Interface to add colors to a database.")
+                st.write("Interface to add colors to a database (coming soon).")
         with col3:
             if st.button("Create Custom Data Base"):
-                st.write("Interface to create a custom color database.")
+                st.write("Interface to create a custom color database (coming soon).")
+        
+        # If subpage is set, display that subpage.
+        if st.session_state.subpage == "databases":
+            show_databases_page()
 
 if __name__ == "__main__":
     main()
