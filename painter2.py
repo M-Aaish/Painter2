@@ -4,7 +4,7 @@ import math
 import numpy as np
 
 # ---------------------------------
-# Base colors dictionary (with densities, though we use only RGB here)
+# Base colors dictionary (with densities; here we use only the RGB values)
 # ---------------------------------
 db_colors = {
     "Burnt Sienna": {"rgb": [58, 22, 14], "density": 1073},
@@ -50,8 +50,8 @@ def rgb_to_hex(r, g, b):
 def mix_colors(recipe):
     """
     Given a recipe (list of tuples (color, percentage)),
-    compute the mixed color.
-    Percentages can be floats; returns an (R, G, B) tuple.
+    compute the weighted average of the RGB values.
+    Percentages may be floats.
     """
     total, r_total, g_total, b_total = 0, 0, 0, 0
     for color, perc in recipe:
@@ -62,47 +62,44 @@ def mix_colors(recipe):
         total += perc
     if total == 0:
         return (0, 0, 0)
-    return (round(r_total / total), round(g_total / total), round(b_total / total))
+    return (round(r_total/total), round(g_total/total), round(b_total/total))
 
 def color_error(c1, c2):
-    """Euclidean distance between two RGB colors."""
+    """Compute Euclidean distance between two RGB colors."""
     return math.sqrt(sum((a - b) ** 2 for a, b in zip(c1, c2)))
 
-def generate_recipes(target, step=10.0):
+def generate_recipes(target, step=1.0):
     """
-    Generate candidate recipes from 3-color combinations.
-    'step' is the percentage increment (e.g., 1.0, 2.5, 10.0).
+    Generate candidate recipes using 3-color combinations.
+    'step' is the increment in percentages (default 1%).
     Returns a list of tuples (recipe, mixed_color, error).
     Each recipe is a list of tuples (base_color_name, percentage).
     """
     candidates = []
-    # Prepare list of (name, rgb)
     base_list = [(name, info["rgb"]) for name, info in db_colors.items()]
-    
-    # Special case: if any base color nearly equals the target.
+
+    # Special case: if any base color nearly matches the target.
     for name, rgb in base_list:
         err = color_error(tuple(rgb), target)
-        if err < 5:  # threshold for an exact match
+        if err < 5:  # threshold for near-exact match
             recipe = [(name, 100.0)]
             candidates.append((recipe, tuple(rgb), err))
     
-    # Generate recipes for every 3-color combination.
+    # Generate recipes over all 3-color combinations.
     for (name1, rgb1), (name2, rgb2), (name3, rgb3) in itertools.combinations(base_list, 3):
         for p1 in np.arange(0, 100 + step, step):
             for p2 in np.arange(0, 100 - p1 + step, step):
                 p3 = 100 - p1 - p2
-                # Ensure percentages are non-negative
                 if p3 < 0:
                     continue
                 recipe = [(name1, p1), (name2, p2), (name3, p3)]
-                # For mixing, we use the base RGB values
                 mix_recipe = [(rgb1, p1), (rgb2, p2), (rgb3, p3)]
                 mixed = mix_colors(mix_recipe)
                 err = color_error(mixed, target)
                 candidates.append((recipe, mixed, err))
-    # Sort candidates by error (lowest error first)
+    # Sort candidates by error (lowest first)
     candidates.sort(key=lambda x: x[2])
-    # Choose top 3 unique recipes.
+    # Select top 3 unique recipes.
     top = []
     seen = set()
     for rec, mixed, err in candidates:
@@ -115,10 +112,7 @@ def generate_recipes(target, step=10.0):
     return top
 
 def display_color_block(color, label=""):
-    """
-    Display a colored block using an HTML div.
-    'color' is an (R, G, B) tuple.
-    """
+    """Display a colored block as an HTML div."""
     hex_color = rgb_to_hex(*color)
     st.markdown(
         f"<div style='background-color: {hex_color}; width:100px; height:100px; border:1px solid #000; text-align: center; line-height: 100px;'>{label}</div>",
@@ -131,10 +125,10 @@ def display_color_block(color, label=""):
 def main():
     st.title("Painter App")
     st.write("Enter your desired paint color to generate paint recipes using base colors.")
-    
-    # Let the user choose between the Color Picker or RGB Sliders
+
+    # Input method: let user choose between a Color Picker or RGB Sliders.
     method = st.radio("Select input method:", ["Color Picker", "RGB Sliders"])
-    
+
     if method == "Color Picker":
         desired_hex = st.color_picker("Pick a color", "#ffffff")
         desired_rgb = tuple(int(desired_hex[i:i+2], 16) for i in (1, 3, 5))
@@ -145,15 +139,13 @@ def main():
         b = st.slider("Blue", 0, 255, 255)
         desired_rgb = (r, g, b)
         desired_hex = rgb_to_hex(r, g, b)
-    
+
     st.write("**Desired Color:**", desired_hex)
     display_color_block(desired_rgb, label="Desired")
-    
-    # New slider to choose the percentage step (e.g., 1%, 2.5%, etc.)
-    step = st.slider("Select percentage step for recipe generation:", 1.0, 10.0, 10.0, step=0.5)
-    
+
     if st.button("Generate Recipes"):
-        recipes = generate_recipes(desired_rgb, step=step)
+        # Use a fine increment of 1%
+        recipes = generate_recipes(desired_rgb, step=1.0)
         st.write("### Top 3 Paint Recipes")
         for idx, (recipe, mixed, err) in enumerate(recipes):
             st.write(f"**Recipe {idx+1}:** (Error = {err:.2f})")
