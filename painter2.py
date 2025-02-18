@@ -34,7 +34,7 @@ def parse_color_db(txt):
         line = line.strip()
         if not line:
             continue
-        # If the line doesn't start with a digit, treat it as a header (database name)
+        # If line doesn't start with a digit, treat it as a header (database name)
         if not line[0].isdigit():
             current_db = line
             databases[current_db] = []
@@ -148,7 +148,7 @@ def add_color_to_db(selected_db, color_name, r, g, b):
     """
     Add a new color to the specified database section in the color.txt file.
     Reads the file, finds the section, appends a new line with the next index,
-    writes back the file, and clears cache.
+    writes back the file, and clears the cache.
     """
     try:
         with open(COLOR_DB_FILE, "r") as f:
@@ -161,6 +161,7 @@ def add_color_to_db(selected_db, color_name, r, g, b):
     in_section = False
     section_found = False
     index = 0
+    inserted = False
     for line in lines:
         stripped = line.strip()
         if not stripped:
@@ -168,22 +169,23 @@ def add_color_to_db(selected_db, color_name, r, g, b):
             continue
         if not stripped[0].isdigit():
             # Header line.
-            if in_section and section_found:
-                # End of current section: insert new color here if not yet inserted.
+            if in_section and section_found and not inserted:
                 new_lines.append(f"{index+1} {color_name} {r},{g},{b}\n")
-                in_section = False
-                section_found = False
+                inserted = True
             if stripped == selected_db:
                 section_found = True
                 in_section = True
+            else:
+                in_section = False
+                section_found = False
             new_lines.append(line)
         else:
-            if in_section:
+            if in_section and section_found:
                 tokens = stripped.split()
                 if tokens[0].isdigit():
                     index = max(index, int(tokens[0]))
             new_lines.append(line)
-    if in_section and section_found:
+    if in_section and section_found and not inserted:
         new_lines.append(f"{index+1} {color_name} {r},{g},{b}\n")
     try:
         with open(COLOR_DB_FILE, "w") as f:
@@ -197,7 +199,7 @@ def add_color_to_db(selected_db, color_name, r, g, b):
 def remove_color_from_db(selected_db, color_name, r, g, b):
     """
     Remove a color from the specified database in color.txt.
-    The color is identified by matching both name and the RGB values.
+    The color is identified by matching both name and RGB values.
     """
     try:
         with open(COLOR_DB_FILE, "r") as f:
@@ -217,9 +219,6 @@ def remove_color_from_db(selected_db, color_name, r, g, b):
             continue
         if not stripped[0].isdigit():
             # Header line.
-            if in_section and section_found and not removed:
-                # End of section and color was not found.
-                st.warning("Color not found in the selected database.")
             if stripped == selected_db:
                 in_section = True
                 section_found = True
@@ -230,7 +229,6 @@ def remove_color_from_db(selected_db, color_name, r, g, b):
         else:
             if in_section and section_found and not removed:
                 tokens = stripped.split()
-                # tokens[0] is index; tokens[1:-1] form the name; last token is the RGB.
                 current_name = " ".join(tokens[1:-1])
                 current_rgb = tokens[-1]
                 if current_name.lower() == color_name.lower():
@@ -241,7 +239,7 @@ def remove_color_from_db(selected_db, color_name, r, g, b):
                         continue
                     if (cr, cg, cb) == (r, g, b):
                         removed = True
-                        continue  # Skip this line (i.e. remove it)
+                        continue  # Skip this line to remove it
             new_lines.append(line)
     if not removed:
         st.warning("Color not found in the selected database.")
@@ -271,8 +269,8 @@ def create_custom_database(new_db_name):
 
 def remove_database(db_name):
     """
-    Remove an entire database (its header and all its associated lines)
-    from color.txt. A confirmation is required.
+    Remove an entire database (its header and associated lines)
+    from color.txt.
     """
     try:
         with open(COLOR_DB_FILE, "r") as f:
@@ -289,19 +287,18 @@ def remove_database(db_name):
         if not stripped:
             new_lines.append(line)
             continue
-        # If it's a header:
         if not stripped[0].isdigit():
+            # Header line.
             if stripped == db_name:
                 in_target = True
                 removed = True
-                continue  # Skip the header line for the target db
+                continue  # Skip this header
             else:
                 in_target = False
                 new_lines.append(line)
         else:
             if in_target:
-                # Skip lines within the target database section.
-                continue
+                continue  # Skip lines in the target database
             else:
                 new_lines.append(line)
     if not removed:
@@ -317,7 +314,7 @@ def remove_database(db_name):
         return False
 
 # -----------------------------
-# Colors DataBase Subpages
+# Colors DataBase Subpages.
 # -----------------------------
 def show_databases_page():
     st.title("Color Database - Data Bases")
@@ -412,7 +409,7 @@ def show_remove_database_page():
                 st.error("Please enter a database name.")
 
 # -----------------------------
-# Main app navigation
+# Main app navigation.
 # -----------------------------
 def main():
     if "subpage" not in st.session_state:
