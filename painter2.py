@@ -26,9 +26,9 @@ def read_color_file(filename=COLOR_DB_FILE):
 
 # -----------------------------
 # Parsing function: Reads the text file and creates a dictionary of databases.
-# New file format example:
-#    Artisan - Winsor & Newton
-#    1 Burnt Sienna 58,22,14 1073
+# File format example:
+#   Artisan - Winsor & Newton
+#   1 Burnt Sienna 58,22,14 1073
 # -----------------------------
 def parse_color_db(txt):
     databases = {}
@@ -37,23 +37,19 @@ def parse_color_db(txt):
         line = line.strip()
         if not line:
             continue
-        # If the line does not start with a digit, treat it as a header (database name)
+        # If the line doesn't start with a digit, treat it as a database header.
         if not line[0].isdigit():
             current_db = line
             databases[current_db] = []
         else:
             tokens = line.split()
-            # Ensure there are at least 4 tokens: index, color name, RGB string, and density.
+            # Expect at least 4 tokens: index, color name, RGB string, density.
             if len(tokens) < 4:
                 continue
-            # The first token is the index.
             index = tokens[0]
-            # The second-last token is the RGB string; the last token is density (ignored).
-            rgb_str = tokens[-2]
-            # The color name is everything between the index and the RGB string.
+            rgb_str = tokens[-2]  # second-last token is the RGB string.
             color_name = " ".join(tokens[1:-2])
             try:
-                # Convert the RGB string (e.g. "58,22,14") to a tuple.
                 r, g, b = [int(x) for x in rgb_str.split(",")]
             except Exception:
                 continue
@@ -65,7 +61,7 @@ color_txt = read_color_file()
 databases = parse_color_db(color_txt)
 
 # -----------------------------
-# Helper: Convert list of (name, rgb) tuples into a dictionary.
+# Helper: Convert a list of (name, rgb) tuples into a dictionary.
 # -----------------------------
 def convert_db_list_to_dict(color_list):
     d = {}
@@ -157,7 +153,7 @@ def add_color_to_db(selected_db, color_name, r, g, b):
     """
     Add a new color to the specified database section in the color.txt file.
     Reads the file, finds the selected database section, and inserts a new line
-    with the next available index.
+    with the next available index. (A dummy density value 0 is added.)
     """
     try:
         with open(COLOR_DB_FILE, "r") as f:
@@ -206,10 +202,10 @@ def add_color_to_db(selected_db, color_name, r, g, b):
         st.error("Error writing to file: " + str(e))
         return False
 
-def remove_color_from_db(selected_db, color_name, r, g, b):
+def remove_color_from_db(selected_db, color_name):
     """
     Remove a color from the specified database in color.txt.
-    The color is identified by matching name (case-insensitive) and RGB values.
+    The color is identified by matching the name (case-insensitive).
     """
     try:
         with open(COLOR_DB_FILE, "r") as f:
@@ -235,17 +231,10 @@ def remove_color_from_db(selected_db, color_name, r, g, b):
             continue
         if in_section and not removed:
             tokens = stripped.split()
-            current_name = " ".join(tokens[1:-2]).strip()
-            current_rgb = tokens[-2].strip()
+            current_name = " ".join(tokens[1:-2]).strip()  # Exclude index, RGB and density.
             if current_name.lower() == color_name.lower():
-                try:
-                    cr, cg, cb = [int(x) for x in current_rgb.split(",")]
-                except Exception:
-                    new_lines.append(line)
-                    continue
-                if (cr, cg, cb) == (r, g, b):
-                    removed = True
-                    continue  # Skip this line
+                removed = True
+                continue  # Skip this line to remove it.
         new_lines.append(line)
     if not removed:
         st.warning("Color not found in the selected database.")
@@ -357,13 +346,10 @@ def show_remove_colors_page():
     selected_db = st.selectbox("Select database to remove a color from:", list(databases.keys()))
     with st.form("remove_color_form"):
         color_name = st.text_input("Color Name to Remove")
-        r = st.number_input("Red", min_value=0, max_value=255, value=255, key="rem_r")
-        g = st.number_input("Green", min_value=0, max_value=255, value=255, key="rem_g")
-        b = st.number_input("Blue", min_value=0, max_value=255, value=255, key="rem_b")
         submitted = st.form_submit_button("Remove Color")
         if submitted:
             if color_name:
-                success = remove_color_from_db(selected_db, color_name, int(r), int(g), int(b))
+                success = remove_color_from_db(selected_db, color_name)
                 if success:
                     st.success(f"Color '{color_name}' removed from {selected_db}!")
                     color_txt = read_color_file(COLOR_DB_FILE)
@@ -477,22 +463,26 @@ def main():
     elif page == "Colors DataBase":
         st.title("Colors DataBase")
         st.write("Select an action:")
-        col1, col2, col3, col4, col5 = st.columns(5)
-        with col1:
+        # Arrange six buttons in two rows with 3 columns each.
+        row1_cols = st.columns(3)
+        with row1_cols[0]:
             if st.button("Data Bases"):
                 st.session_state.subpage = "databases"
-        with col2:
+        with row1_cols[1]:
             if st.button("Add Colors"):
                 st.session_state.subpage = "add"
-        with col3:
+        with row1_cols[2]:
             if st.button("Remove Colors"):
                 st.session_state.subpage = "remove_colors"
-        with col4:
+        row2_cols = st.columns(3)
+        with row2_cols[0]:
             if st.button("Create Custom Data Base"):
                 st.session_state.subpage = "custom"
-        with col5:
+        with row2_cols[1]:
             if st.button("Remove Database"):
                 st.session_state.subpage = "remove_database"
+        with row2_cols[2]:
+            st.write("")  # Empty placeholder for equal spacing.
         
         if st.session_state.subpage == "databases":
             show_databases_page()
