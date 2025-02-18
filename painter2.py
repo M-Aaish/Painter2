@@ -246,8 +246,9 @@ def show_databases_page():
         display_thin_color_block(rgb)
 
 def show_add_colors_page():
+    global databases  # declare at the very beginning
     st.title("Colors DataBase - Add Colors")
-    # Dropdown to select which database to add a color to.
+    # Dropdown to select which database to add a new color to.
     selected_db = st.selectbox("Select database to add a new color:", list(databases.keys()))
     with st.form("add_color_form"):
         new_color_name = st.text_input("New Color Name")
@@ -261,7 +262,6 @@ def show_add_colors_page():
                 if success:
                     st.success(f"Color '{new_color_name}' added to {selected_db}!")
                     # Re-read file and update databases
-                    global databases
                     color_txt = read_color_file(COLOR_DB_FILE)
                     databases = parse_color_db(color_txt)
                 else:
@@ -270,6 +270,7 @@ def show_add_colors_page():
                 st.error("Please enter a color name.")
 
 def show_create_custom_db_page():
+    global databases  # declare global here
     st.title("Colors DataBase - Create Custom Data Base")
     with st.form("create_db_form"):
         new_db_name = st.text_input("Enter new database name:")
@@ -279,14 +280,12 @@ def show_create_custom_db_page():
                 success = create_custom_database(new_db_name)
                 if success:
                     st.success(f"Database '{new_db_name}' created!")
-                    global databases
                     color_txt = read_color_file(COLOR_DB_FILE)
                     databases = parse_color_db(color_txt)
                 else:
                     st.error("Failed to create database.")
             else:
                 st.error("Please enter a database name.")
-
 # -----------------------------
 # Main app navigation
 # -----------------------------
