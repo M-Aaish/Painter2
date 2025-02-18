@@ -7,6 +7,9 @@ import os
 # Set page config at the very beginning.
 st.set_page_config(page_title="Painter App", layout="wide")
 
+# -----------------------------
+# File name for our color database.
+# -----------------------------
 COLOR_DB_FILE = "color.txt"
 
 # -----------------------------
@@ -22,7 +25,7 @@ def read_color_file(filename=COLOR_DB_FILE):
         return ""
 
 # -----------------------------
-# Parsing function: read the text and create a dictionary of databases.
+# Parsing function: reads the text and creates a dictionary of databases.
 # -----------------------------
 def parse_color_db(txt):
     databases = {}
@@ -31,13 +34,13 @@ def parse_color_db(txt):
         line = line.strip()
         if not line:
             continue
-        # If line does not start with a digit, treat it as a database header.
+        # If the line doesn't start with a digit, treat it as a header (database name)
         if not line[0].isdigit():
             current_db = line
             databases[current_db] = []
         else:
             tokens = line.split()
-            # First token is an index, last token is the RGB string, the rest form the color name.
+            # First token is an index, last token is the RGB string, rest form the color name.
             index = tokens[0]
             rgb_str = tokens[-1]
             color_name = " ".join(tokens[1:-1])
@@ -48,12 +51,12 @@ def parse_color_db(txt):
             databases[current_db].append((color_name, (r, g, b)))
     return databases
 
-# Read and parse the color file.
+# Read and parse the file.
 color_txt = read_color_file()
 databases = parse_color_db(color_txt)
 
 # -----------------------------
-# Helper: Convert list of (name, rgb) tuples to a dictionary.
+# Helper: Convert list of (name, rgb) tuples into a dictionary.
 # -----------------------------
 def convert_db_list_to_dict(color_list):
     d = {}
@@ -62,7 +65,7 @@ def convert_db_list_to_dict(color_list):
     return d
 
 # -----------------------------
-# Existing helper functions.
+# Helper functions.
 # -----------------------------
 def rgb_to_hex(r, g, b):
     """Convert RGB (0-255) to a hex string."""
@@ -139,15 +142,14 @@ def display_thin_color_block(color):
     )
 
 # -----------------------------
-# File update helpers
+# File update helpers.
 # -----------------------------
 def add_color_to_db(selected_db, color_name, r, g, b):
     """
     Add a new color to the specified database section in the color.txt file.
-    It reads the file, finds the section, appends a new line with the next index,
-    and writes back the file.
+    Reads the file, finds the section, appends a new line with the next index,
+    writes back the file, and clears cache.
     """
-    # Read file lines.
     try:
         with open(COLOR_DB_FILE, "r") as f:
             lines = f.readlines()
@@ -155,62 +157,98 @@ def add_color_to_db(selected_db, color_name, r, g, b):
         st.error("Error reading file for update: " + str(e))
         return False
 
-    new_color_line = ""
-    # Find the section for selected_db.
     new_lines = []
     in_section = False
-    index = 0
     section_found = False
+    index = 0
     for line in lines:
         stripped = line.strip()
-        # Check if line is a header (doesn't start with digit)
-        if stripped and not stripped[0].isdigit():
-            if in_section:
-                # End of current section.
+        if not stripped:
+            new_lines.append(line)
+            continue
+        if not stripped[0].isdigit():
+            # Header line.
+            if in_section and section_found:
+                # End of current section: insert new color here if not yet inserted.
+                new_lines.append(f"{index+1} {color_name} {r},{g},{b}\n")
                 in_section = False
+                section_found = False
             if stripped == selected_db:
                 section_found = True
                 in_section = True
-                new_lines.append(line)
-                continue
-        if in_section:
-            # In the section, try to get the last index.
-            tokens = stripped.split()
-            if tokens and tokens[0].isdigit():
-                index = max(index, int(tokens[0]))
             new_lines.append(line)
         else:
+            if in_section:
+                tokens = stripped.split()
+                if tokens[0].isdigit():
+                    index = max(index, int(tokens[0]))
             new_lines.append(line)
-    if not section_found:
-        st.error("Selected database not found in file.")
-        return False
-
-    # Next index
-    new_index = index + 1
-    new_color_line = f"{new_index} {color_name} {r},{g},{b}\n"
-    # Insert the new line at the end of the section.
-    updated_lines = []
-    inserted = False
-    in_section = False
-    for line in lines:
-        stripped = line.strip()
-        if stripped and not stripped[0].isdigit():
-            # Header
-            if stripped == selected_db:
-                in_section = True
-            else:
-                if in_section and not inserted:
-                    updated_lines.append(new_color_line)
-                    inserted = True
-                in_section = False
-        updated_lines.append(line)
-    if in_section and not inserted:
-        updated_lines.append(new_color_line)
-    
+    if in_section and section_found:
+        new_lines.append(f"{index+1} {color_name} {r},{g},{b}\n")
     try:
         with open(COLOR_DB_FILE, "w") as f:
-            f.writelines(updated_lines)
-        # Clear the cache for read_color_file so new data is loaded.
+            f.writelines(new_lines)
+        read_color_file.clear()
+        return True
+    except Exception as e:
+        st.error("Error writing to file: " + str(e))
+        return False
+
+def remove_color_from_db(selected_db, color_name, r, g, b):
+    """
+    Remove a color from the specified database in color.txt.
+    The color is identified by matching both name and the RGB values.
+    """
+    try:
+        with open(COLOR_DB_FILE, "r") as f:
+            lines = f.readlines()
+    except Exception as e:
+        st.error("Error reading file for removal: " + str(e))
+        return False
+
+    new_lines = []
+    in_section = False
+    section_found = False
+    removed = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            new_lines.append(line)
+            continue
+        if not stripped[0].isdigit():
+            # Header line.
+            if in_section and section_found and not removed:
+                # End of section and color was not found.
+                st.warning("Color not found in the selected database.")
+            if stripped == selected_db:
+                in_section = True
+                section_found = True
+            else:
+                in_section = False
+                section_found = False
+            new_lines.append(line)
+        else:
+            if in_section and section_found and not removed:
+                tokens = stripped.split()
+                # tokens[0] is index; tokens[1:-1] form the name; last token is the RGB.
+                current_name = " ".join(tokens[1:-1])
+                current_rgb = tokens[-1]
+                if current_name.lower() == color_name.lower():
+                    try:
+                        cr, cg, cb = [int(x) for x in current_rgb.split(",")]
+                    except Exception:
+                        new_lines.append(line)
+                        continue
+                    if (cr, cg, cb) == (r, g, b):
+                        removed = True
+                        continue  # Skip this line (i.e. remove it)
+            new_lines.append(line)
+    if not removed:
+        st.warning("Color not found in the selected database.")
+        return False
+    try:
+        with open(COLOR_DB_FILE, "w") as f:
+            f.writelines(new_lines)
         read_color_file.clear()
         return True
     except Exception as e:
@@ -219,12 +257,59 @@ def add_color_to_db(selected_db, color_name, r, g, b):
 
 def create_custom_database(new_db_name):
     """
-    Append a new database header to the end of the color.txt file.
+    Append a new database header to the end of color.txt.
     """
     line = f"\n{new_db_name}\n"
     try:
         with open(COLOR_DB_FILE, "a") as f:
             f.write(line)
+        read_color_file.clear()
+        return True
+    except Exception as e:
+        st.error("Error writing to file: " + str(e))
+        return False
+
+def remove_database(db_name):
+    """
+    Remove an entire database (its header and all its associated lines)
+    from color.txt. A confirmation is required.
+    """
+    try:
+        with open(COLOR_DB_FILE, "r") as f:
+            lines = f.readlines()
+    except Exception as e:
+        st.error("Error reading file for removal: " + str(e))
+        return False
+
+    new_lines = []
+    in_target = False
+    removed = False
+    for line in lines:
+        stripped = line.strip()
+        if not stripped:
+            new_lines.append(line)
+            continue
+        # If it's a header:
+        if not stripped[0].isdigit():
+            if stripped == db_name:
+                in_target = True
+                removed = True
+                continue  # Skip the header line for the target db
+            else:
+                in_target = False
+                new_lines.append(line)
+        else:
+            if in_target:
+                # Skip lines within the target database section.
+                continue
+            else:
+                new_lines.append(line)
+    if not removed:
+        st.warning("Database not found.")
+        return False
+    try:
+        with open(COLOR_DB_FILE, "w") as f:
+            f.writelines(new_lines)
         read_color_file.clear()
         return True
     except Exception as e:
@@ -243,9 +328,8 @@ def show_databases_page():
         display_thin_color_block(rgb)
 
 def show_add_colors_page():
-    global databases  # declare at the very beginning
+    global databases
     st.title("Colors DataBase - Add Colors")
-    # Dropdown to select which database to add a new color to.
     selected_db = st.selectbox("Select database to add a new color:", list(databases.keys()))
     with st.form("add_color_form"):
         new_color_name = st.text_input("New Color Name")
@@ -258,7 +342,6 @@ def show_add_colors_page():
                 success = add_color_to_db(selected_db, new_color_name, int(r), int(g), int(b))
                 if success:
                     st.success(f"Color '{new_color_name}' added to {selected_db}!")
-                    # Re-read file and update databases
                     color_txt = read_color_file(COLOR_DB_FILE)
                     databases = parse_color_db(color_txt)
                 else:
@@ -266,8 +349,30 @@ def show_add_colors_page():
             else:
                 st.error("Please enter a color name.")
 
+def show_remove_colors_page():
+    global databases
+    st.title("Colors DataBase - Remove Colors")
+    selected_db = st.selectbox("Select database to remove a color from:", list(databases.keys()))
+    with st.form("remove_color_form"):
+        color_name = st.text_input("Color Name to Remove")
+        r = st.number_input("Red", min_value=0, max_value=255, value=255, key="rem_r")
+        g = st.number_input("Green", min_value=0, max_value=255, value=255, key="rem_g")
+        b = st.number_input("Blue", min_value=0, max_value=255, value=255, key="rem_b")
+        submitted = st.form_submit_button("Remove Color")
+        if submitted:
+            if color_name:
+                success = remove_color_from_db(selected_db, color_name, int(r), int(g), int(b))
+                if success:
+                    st.success(f"Color '{color_name}' removed from {selected_db}!")
+                    color_txt = read_color_file(COLOR_DB_FILE)
+                    databases = parse_color_db(color_txt)
+                else:
+                    st.error("Failed to remove color or color not found.")
+            else:
+                st.error("Please enter a color name.")
+
 def show_create_custom_db_page():
-    global databases  # declare global here
+    global databases
     st.title("Colors DataBase - Create Custom Data Base")
     with st.form("create_db_form"):
         new_db_name = st.text_input("Enter new database name:")
@@ -283,11 +388,33 @@ def show_create_custom_db_page():
                     st.error("Failed to create database.")
             else:
                 st.error("Please enter a database name.")
+
+def show_remove_database_page():
+    global databases
+    st.title("Colors DataBase - Remove Database")
+    with st.form("remove_db_form"):
+        db_name = st.text_input("Enter the name of the database to remove:")
+        submitted = st.form_submit_button("Remove Database")
+        if submitted:
+            if db_name:
+                confirm = st.checkbox("I confirm that I want to permanently delete this database.")
+                if confirm:
+                    success = remove_database(db_name)
+                    if success:
+                        st.success(f"Database '{db_name}' removed!")
+                        color_txt = read_color_file(COLOR_DB_FILE)
+                        databases = parse_color_db(color_txt)
+                    else:
+                        st.error("Failed to remove database.")
+                else:
+                    st.warning("Please check the confirmation box to proceed.")
+            else:
+                st.error("Please enter a database name.")
+
 # -----------------------------
 # Main app navigation
 # -----------------------------
 def main():
-    # Initialize subpage state if not set.
     if "subpage" not in st.session_state:
         st.session_state.subpage = None
 
@@ -298,11 +425,9 @@ def main():
         st.title("Painter App - Recipe Generator")
         st.write("Enter your desired paint color to generate paint recipes using base colors.")
         
-        # Dropdown to select a database.
         db_choice = st.selectbox("Select a color database:", list(databases.keys()))
         selected_db_dict = convert_db_list_to_dict(databases[db_choice])
         
-        # Input method for desired color.
         method = st.radio("Select input method:", ["Color Picker", "RGB Sliders"])
         if method == "Color Picker":
             desired_hex = st.color_picker("Pick a color", "#ffffff")
@@ -318,7 +443,6 @@ def main():
         st.write("**Desired Color:**", desired_hex)
         display_color_block(desired_rgb, label="Desired")
         
-        # Slider for percentage step (4 to 10).
         step = st.slider("Select percentage step for recipe generation:", 4.0, 10.0, 10.0, step=0.5)
         
         if st.button("Generate Recipes"):
@@ -351,7 +475,7 @@ def main():
     elif page == "Colors DataBase":
         st.title("Colors DataBase")
         st.write("Select an action:")
-        col1, col2, col3 = st.columns(3)
+        col1, col2, col3, col4, col5 = st.columns(5)
         with col1:
             if st.button("Data Bases"):
                 st.session_state.subpage = "databases"
@@ -359,15 +483,25 @@ def main():
             if st.button("Add Colors"):
                 st.session_state.subpage = "add"
         with col3:
+            if st.button("Remove Colors"):
+                st.session_state.subpage = "remove_colors"
+        with col4:
             if st.button("Create Custom Data Base"):
                 st.session_state.subpage = "custom"
+        with col5:
+            if st.button("Remove Database"):
+                st.session_state.subpage = "remove_database"
         
         if st.session_state.subpage == "databases":
             show_databases_page()
         elif st.session_state.subpage == "add":
             show_add_colors_page()
+        elif st.session_state.subpage == "remove_colors":
+            show_remove_colors_page()
         elif st.session_state.subpage == "custom":
             show_create_custom_db_page()
+        elif st.session_state.subpage == "remove_database":
+            show_remove_database_page()
 
 if __name__ == "__main__":
     main()
