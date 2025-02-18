@@ -7,9 +7,6 @@ import os
 # Set page config at the very beginning.
 st.set_page_config(page_title="Painter App", layout="wide")
 
-# -----------------------------
-# File name for our color database.
-# -----------------------------
 COLOR_DB_FILE = "color.txt"
 
 # -----------------------------
