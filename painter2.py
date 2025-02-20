@@ -15,7 +15,7 @@ COLOR_DB_FILE = "color.txt"
 # -----------------------------
 # Read the color database from the text file.
 # -----------------------------
-
+@st.cache_data
 def read_color_file(filename=COLOR_DB_FILE):
     try:
         with open(filename, "r") as f:
